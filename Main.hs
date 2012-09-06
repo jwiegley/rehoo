@@ -68,7 +68,7 @@ main = do
 
   _    <- GHC.Conc.setNumCapabilities jobs'
 
-  hoos <- shelly $ filter <$> pure (flip hasExtension "hoo")
+  hoos <- shelly $ filter <$> pure (`hasExtension` "hoo")
                           <*> (ls . fromText . T.pack . dir $ opts)
 
   putStrLn $ "Running with " ++ show jobs'
@@ -92,7 +92,7 @@ processHoos pool size hoos
     -- recursively process each chunk.  The results are collected in series
     -- from MVars that will contain the final pathname.
     mVars <- traverse forkProcessHoos (chunksOf size hoos)
-    bracket (sequence $ map takeMVar mVars)
+    bracket (traverse takeMVar mVars)
             (shelly . verbosely . traverse_ rm)
             (processHoos pool size)
 
