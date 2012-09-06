@@ -1,6 +1,6 @@
 Name: rehoo
 
-Version:  0.1.0
+Version:  0.1.1
 Synopsis: Rebuild default.hoo from many .hoo files in the current directory
 
 Description: Rebuild default.hoo from many .hoo files in the current directory

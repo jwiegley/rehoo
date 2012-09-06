@@ -77,10 +77,12 @@ main = do
   pool     <- MSem.new jobs'
   tempPath <- processHoos pool chunks' hoos
 
-  shelly $ verbosely $
-    mv tempPath $ fromText $ case outfile opts of
-                               "" -> "default.hoo"
-                               x  -> T.pack x
+  shelly $ verbosely $ do
+    let outputPath = fromText $ case outfile opts of
+                                  "" -> "default.hoo"
+                                  x  -> T.pack x
+    rm_f outputPath
+    mv tempPath outputPath
 
 processHoos :: MSem.MSem Int -> Int -> [FilePath] -> IO FilePath
 processHoos pool size hoos
