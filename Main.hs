@@ -66,7 +66,7 @@ main = do
   let jobs'   = max (jobs opts) caps
       chunks' = max (chunks opts) 16
 
-  _    <- GHC.Conc.setNumCapabilities jobs'
+  _ <- GHC.Conc.setNumCapabilities jobs'
 
   hoos <- shelly $ filter <$> pure (`hasExtension` "hoo")
                           <*> (ls . fromText . T.pack . dir $ opts)
@@ -82,7 +82,6 @@ main = do
     mv tempPath $ fromText $ case outfile opts of
                                "" -> "default.hoo"
                                x  -> T.pack x
-
   exitSuccess
 
 processHoos :: MSem.MSem Int -> Int -> [FilePath] -> IO FilePath
@@ -91,8 +90,8 @@ processHoos pool size hoos
     -- Split the list into 'size' sized chunks, then fork off a thread to
     -- recursively process each chunk.  The results are collected in series
     -- from MVars that will contain the final pathname.
-    mVars <- traverse forkProcessHoos (chunksOf size hoos)
-    bracket (traverse takeMVar mVars)
+    bracket (traverse forkProcessHoos (chunksOf size hoos) >>=
+             traverse takeMVar)
             (shelly . verbosely . traverse_ rm)
             (processHoos pool size)
 
@@ -114,9 +113,7 @@ processHoos pool size hoos
     forkProcessHoos :: [FilePath] -> IO (MVar FilePath)
     forkProcessHoos xs = do
       mVar <- newEmptyMVar
-      _ <- forkIO $ do
-        hoo <- processHoos pool size xs
-        putMVar mVar hoo
+      _    <- forkIO $ processHoos pool size xs >>= putMVar mVar
       return mVar
 
 -- Main.hs (rehoo) ends here
