@@ -21,11 +21,10 @@ import           Prelude hiding (FilePath, sequence)
 import           Shelly
 import           System.Console.CmdArgs
 import           System.Environment (getArgs, withArgs)
-import           System.Exit
 import           System.IO hiding (FilePath)
 
 default (Text)
-
+
 version :: String
 version       = "0.1.0"
 
@@ -34,7 +33,7 @@ copyright     = "2012"
 
 reHooSummary :: String
 reHooSummary = "rehoo v" ++ version ++ ", (C) John Wiegley " ++ copyright
-
+
 data Rehoo = Rehoo
     { chunks  :: Int
     , jobs    :: Int
@@ -53,7 +52,7 @@ reHoo = Rehoo
     summary reHooSummary &=
     program "rehoo" &=
     help "Rebuild default.hoo from many .hoo files in the given directory"
-
+
 main :: IO ()
 main = do
   -- process command-line options
@@ -82,11 +81,10 @@ main = do
     mv tempPath $ fromText $ case outfile opts of
                                "" -> "default.hoo"
                                x  -> T.pack x
-  exitSuccess
-
+
 processHoos :: MSem.MSem Int -> Int -> [FilePath] -> IO FilePath
 processHoos pool size hoos
-  | L.length hoos > size = do
+  | L.length hoos > size =
     -- Split the list into 'size' sized chunks, then fork off a thread to
     -- recursively process each chunk.  The results are collected in series
     -- from MVars that each contain the final pathname of the subjob.
