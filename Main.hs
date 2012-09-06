@@ -89,19 +89,19 @@ processHoos pool size hoos
   | L.length hoos > size = do
     -- Split the list into 'size' sized chunks, then fork off a thread to
     -- recursively process each chunk.  The results are collected in series
-    -- from MVars that will contain the final pathname.
+    -- from MVars that each contain the final pathname of the subjob.
     bracket (traverse forkProcessHoos (chunksOf size hoos) >>=
              traverse takeMVar)
             (shelly . verbosely . traverse_ rm)
             (processHoos pool size)
 
   | otherwise = do
+    -- Now that we have a list of files < size elements long, and we are
+    -- already in our own thread, we can start the expensive process of
+    -- running hoogle combine with the output going to a temp file.
     (tempPath, hndl) <- openTempFile "." "rehoo.hoo"
     hClose hndl
 
-    -- Now that we have a list of files < size elements long, we will already
-    -- be within our own thread and can start the expensive process of running
-    -- hoogle combine, with the results going to a temp file.
     MSem.with pool $
       shelly $ verbosely $
         run_ "hoogle" ( "combine" : "--outfile" : T.pack tempPath
