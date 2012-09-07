@@ -74,15 +74,15 @@ main = do
           ++ " workers and " ++ show chunks'
           ++ " sized chunks per worker"
 
+  let outputPath = fromText $ case outfile opts of
+                                "" -> "default.hoo"
+                                x  -> T.pack x
+  shelly $ verbosely $ rm_f outputPath
+
   pool     <- MSem.new jobs'
   tempPath <- processHoos pool chunks' hoos
 
-  shelly $ verbosely $ do
-    let outputPath = fromText $ case outfile opts of
-                                  "" -> "default.hoo"
-                                  x  -> T.pack x
-    rm_f outputPath
-    mv tempPath outputPath
+  shelly $ verbosely $ mv tempPath outputPath
 
 processHoos :: MSem.MSem Int -> Int -> [FilePath] -> IO FilePath
 processHoos pool size hoos
