@@ -6,18 +6,16 @@
 module Main where
 
 import           Control.Applicative
-import           Control.Concurrent
-import qualified Control.Concurrent.MSem as MSem
+import           Control.Concurrent.ParallelIO.Local
 import           Control.Exception
 import           Control.Monad hiding (sequence)
 import           Data.Foldable
 import qualified Data.List as L
 import           Data.List.Split
 import           Data.Text.Lazy as T hiding (filter, map, chunksOf)
-import           Data.Traversable
 import           Filesystem.Path
 import           GHC.Conc
-import           Prelude hiding (FilePath, sequence)
+import           Prelude hiding (FilePath, sequence, catch)
 import           Shelly
 import           System.Console.CmdArgs
 import           System.Environment (getArgs, withArgs)
@@ -26,10 +24,10 @@ import           System.IO hiding (FilePath)
 default (Text)
 
 version :: String
-version       = "0.1.0"
+version = "0.1.0"
 
 copyright :: String
-copyright     = "2012"
+copyright = "2012"
 
 reHooSummary :: String
 reHooSummary = "rehoo v" ++ version ++ ", (C) John Wiegley " ++ copyright
@@ -55,45 +53,38 @@ reHoo = Rehoo
 
 main :: IO ()
 main = do
-  -- process command-line options
   mainArgs <- getArgs
   opts     <- withArgs (if L.null mainArgs then ["--help"] else mainArgs)
                        (cmdArgs reHoo)
+  caps     <- GHC.Conc.getNumCapabilities
 
-  caps <- GHC.Conc.getNumCapabilities
+  let jobs'   = case (jobs opts)   of 0 -> caps; x -> x
+      chunks' = case (chunks opts) of 0 -> 16;   x -> x
 
-  let jobs'   = max (jobs opts) caps
-      chunks' = max (chunks opts) 16
-
-  _ <- GHC.Conc.setNumCapabilities jobs'
-
-  hoos <- shelly $ filter <$> pure (`hasExtension` "hoo")
-                          <*> (ls . fromText . T.pack . dir $ opts)
-
-  putStrLn $ "Running with " ++ show jobs'
-          ++ " workers and " ++ show chunks'
-          ++ " sized chunks per worker"
+  putStrLn $ "Running with " ++ show jobs'++ " workers and "
+          ++ show chunks' ++ " sized chunks per worker"
 
   let outputPath = fromText $ case outfile opts of
                                 "" -> "default.hoo"
                                 x  -> T.pack x
   shelly $ verbosely $ rm_f outputPath
 
-  pool     <- MSem.new jobs'
-  tempPath <- processHoos pool chunks' hoos
+  _        <- GHC.Conc.setNumCapabilities jobs'
+  hoos     <- shelly $ filter <$> pure (`hasExtension` "hoo")
+                              <*> (ls . fromText . T.pack . dir $ opts)
+  tempPath <- withPool jobs' $ \pool -> processHoos pool chunks' hoos
 
   shelly $ verbosely $ mv tempPath outputPath
 
-processHoos :: MSem.MSem Int -> Int -> [FilePath] -> IO FilePath
+processHoos :: Pool -> Int -> [FilePath] -> IO FilePath
 processHoos pool size hoos
   | L.length hoos > size =
     -- Split the list into 'size' sized chunks, then fork off a thread to
     -- recursively process each chunk.  The results are collected in series
     -- from MVars that each contain the final pathname of the subjob.
-    bracket (traverse forkProcessHoos (chunksOf size hoos) >>=
-             traverse takeMVar)
-            (shelly . verbosely . traverse_ rm)
-            (processHoos pool size)
+    let f = processHoos pool size in
+    bracket (parallel pool $ map f $ chunksOf size hoos)
+            (shelly . verbosely . traverse_ rm) f
 
   | otherwise = do
     -- Now that we have a list of files < size elements long, and we are
@@ -102,18 +93,9 @@ processHoos pool size hoos
     (tempPath, hndl) <- openTempFile "." "rehoo.hoo"
     hClose hndl
 
-    MSem.with pool $
-      shelly $ verbosely $
-        run_ "hoogle" ( "combine" : "--outfile" : T.pack tempPath
-                      : map toTextIgnore hoos)
-
-    return . fromText . T.pack $ tempPath
-
-  where
-    forkProcessHoos :: [FilePath] -> IO (MVar FilePath)
-    forkProcessHoos xs = do
-      mVar <- newEmptyMVar
-      _    <- forkIO $ processHoos pool size xs >>= putMVar mVar
-      return mVar
+    let file = T.pack tempPath
+    shelly $ verbosely $
+      run_ "hoogle" ("combine": "--outfile":file :map toTextIgnore hoos)
+    return $ fromText file
 
 -- Main.hs (rehoo) ends here

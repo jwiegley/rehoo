@@ -1,6 +1,6 @@
 Name: rehoo
 
-Version:  0.1.2
+Version:  0.2.0
 Synopsis: Rebuild default.hoo from many .hoo files in the current directory
 
 Description: Rebuild default.hoo from many .hoo files in the current directory
@@ -20,8 +20,13 @@ Executable rehoo
     Main-is: Main.hs
     Ghc-options: -threaded
 
-    Build-depends: base >= 4 && < 5, shelly, cmdargs, hslogger, regex-posix,
-                   system-filepath, text, monad-loops, split, SafeSemaphore
+    Build-depends: base >= 4 && < 5
+                 , cmdargs
+                 , parallel-io
+                 , shelly
+                 , split
+                 , system-filepath
+                 , text
 
 Source-repository head
   type:     git
