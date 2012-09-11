@@ -1,7 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ExtendedDefaultRules #-}
-{-# OPTIONS_GHC -fno-warn-type-defaults #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Main where
 
@@ -24,7 +22,7 @@ import           System.IO hiding (FilePath)
 default (Text)
 
 version :: String
-version = "0.1.0"
+version = "0.2.1"
 
 copyright :: String
 copyright = "2012"
@@ -32,12 +30,11 @@ copyright = "2012"
 reHooSummary :: String
 reHooSummary = "rehoo v" ++ version ++ ", (C) John Wiegley " ++ copyright
 
-data Rehoo = Rehoo
-    { chunks  :: Int
-    , jobs    :: Int
-    , outfile :: String
-    , dir     :: String }
-    deriving (Data, Typeable, Show, Eq)
+data Rehoo = Rehoo { chunks  :: Int
+                   , jobs    :: Int
+                   , outfile :: String
+                   , dir     :: String }
+           deriving (Data, Typeable, Show, Eq)
 
 reHoo :: Rehoo
 reHoo = Rehoo
@@ -45,7 +42,8 @@ reHoo = Rehoo
                 &= help "Process INT .hoo's at a time (def: 16)"
     , jobs    = def &= name "j" &= typ "INT"
                 &= help "Run INT hoogle combine's (def: # of capabilities)"
-    , outfile = def &= typFile   &= help "Output file (defaults to default.hoo)"
+    , outfile = def &= typFile
+                &= help "Output file (defaults to default.hoo)"
     , dir     = def &= args &= typDir } &=
     summary reHooSummary &=
     program "rehoo" &=
@@ -58,15 +56,15 @@ main = do
                        (cmdArgs reHoo)
   caps     <- GHC.Conc.getNumCapabilities
 
-  let jobs'   = case (jobs opts)   of 0 -> caps; x -> x
-      chunks' = case (chunks opts) of 0 -> 16;   x -> x
+  let jobs'      = case jobs opts   of 0 -> caps; x -> x
+      chunks'    = case chunks opts of 0 -> 16;   x -> x
+      outputPath = fromText $ case outfile opts of
+                                "" -> "default.hoo"
+                                x  -> T.pack x
 
   putStrLn $ "Running with " ++ show jobs'++ " workers and "
           ++ show chunks' ++ " sized chunks per worker"
 
-  let outputPath = fromText $ case outfile opts of
-                                "" -> "default.hoo"
-                                x  -> T.pack x
   shelly $ verbosely $ rm_f outputPath
 
   _        <- GHC.Conc.setNumCapabilities jobs'
@@ -79,17 +77,16 @@ main = do
 processHoos :: Pool -> Int -> [FilePath] -> IO FilePath
 processHoos pool size hoos
   | L.length hoos > size =
-    -- Split the list into 'size' sized chunks, then fork off a thread to
-    -- recursively process each chunk.  The results are collected in series
-    -- from MVars that each contain the final pathname of the subjob.
+    -- Split the list into 'size' sized chunks and fork off a thread to
+    -- recursively process each chunk
     let f = processHoos pool size in
     bracket (parallel pool $ map f $ chunksOf size hoos)
             (shelly . verbosely . traverse_ rm) f
 
   | otherwise = do
-    -- Now that we have a list of files < size elements long, and we are
-    -- already in our own thread, we can start the expensive process of
-    -- running hoogle combine with the output going to a temp file.
+    -- Now that we have a list of files < size elements long, and are in our
+    -- own thread, we can start the process of running hoogle combine with
+    -- output going to a temp file
     (tempPath, hndl) <- openTempFile "." "rehoo.hoo"
     hClose hndl
 
