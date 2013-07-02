@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
@@ -10,7 +11,11 @@ import           Control.Monad hiding (sequence)
 import           Data.Foldable
 import qualified Data.List as L
 import           Data.List.Split
+#if MIN_VERSION_shelly(1, 0, 0)
+import           Data.Text as T hiding (filter, map, chunksOf)
+#else
 import           Data.Text.Lazy as T hiding (filter, map, chunksOf)
+#endif
 import           Filesystem.Path
 import           GHC.Conc
 import           Prelude hiding (FilePath, sequence, catch)
