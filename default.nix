@@ -3,7 +3,7 @@
 
 cabal.mkDerivation (self: {
   pname = "rehoo";
-  version = "0.3.0";
+  version = "0.3.1";
   src = ./.;
   isLibrary = false;
   isExecutable = true;

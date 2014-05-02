@@ -27,10 +27,10 @@ import           System.IO hiding (FilePath)
 default (Text)
 
 version :: String
-version = "0.2.1"
+version = "0.3.1"
 
 copyright :: String
-copyright = "2012"
+copyright = "2012-2014"
 
 reHooSummary :: String
 reHooSummary = "rehoo v" ++ version ++ ", (C) John Wiegley " ++ copyright
