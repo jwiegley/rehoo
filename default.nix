@@ -1,19 +1,16 @@
-{ cabal, cmdargs, parallelIo, shelly, split, systemFilepath, text
+{ mkDerivation, base, cmdargs, parallel-io, shelly, split, stdenv
+, system-filepath, text
 }:
-
-cabal.mkDerivation (self: {
+mkDerivation {
   pname = "rehoo";
   version = "0.3.1";
   src = ./.;
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
-    cmdargs parallelIo shelly split systemFilepath text
+    base cmdargs parallel-io shelly split system-filepath text
   ];
-  meta = {
-    homepage = "https://github.com/jwiegley/rehoo";
-    description = "Rebuild default.hoo from many .hoo files in the current directory";
-    license = self.stdenv.lib.licenses.bsd3;
-    platforms = self.ghc.meta.platforms;
-  };
-})
+  homepage = "https://github.com/jwiegley/rehoo";
+  description = "Rebuild default.hoo from many .hoo files in the current directory";
+  license = stdenv.lib.licenses.bsd3;
+}
